@@ -37,7 +37,7 @@ builder.Services.AddScoped<IParametroDAL, ParametroDALImpl>();
 builder.Services.AddScoped<IParametroService, ParametroService>();
 
 builder.Services.AddScoped<IProductoDAL, ProductoDALImpl>();
-
+builder.Services.AddScoped<IProductoService, ProductoService>();
 
 builder.Services.AddScoped<IVentaDAL, VentaDALImpl>();
 

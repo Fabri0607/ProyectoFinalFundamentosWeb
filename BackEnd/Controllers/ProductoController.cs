@@ -1,0 +1,55 @@
+﻿using BackEnd.DTO;
+using BackEnd.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BackEnd.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ProductoController : ControllerBase
+    {
+        IProductoService _productoService;
+
+        public ProductoController(IProductoService productoService)
+        {
+            this._productoService = productoService;
+        }
+
+        // GET: api/<ProductoController>
+        [HttpGet]
+        public IEnumerable<ProductoDTO> Get()
+        {
+            var result = _productoService.GetAll();
+            return result;
+        }
+
+        // GET api/<ProductoController>/5
+        [HttpGet("{id}")]
+        public ProductoDTO Get(int id)
+        {
+            var result = _productoService.Get(id);
+            return result;
+        }
+
+        // POST api/<ProductoController>
+        [HttpPost]
+        public void Post([FromBody] ProductoDTO producto)
+        {
+            _productoService.Add(producto);
+        }
+
+        // PUT api/<ProductoController>
+        [HttpPut]
+        public void Put([FromBody] ProductoDTO producto)
+        {
+            _productoService.Update(producto);
+        }
+
+        // DELETE api/<ProductoController>/5
+        [HttpDelete("{id}")]
+        public void Delete(int id)
+        {
+            _productoService.Delete(id);
+        }
+    }
+}
