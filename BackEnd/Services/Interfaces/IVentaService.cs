@@ -4,11 +4,10 @@ namespace BackEnd.Services.Interfaces
 {
     public interface IVentaService
     {
-
+        VentaDTO ProcesarVenta(VentaDTO ventaDTO);
         List<VentaDTO> GetVentas();
         VentaDTO GetVentaById(int id);
-        VentaDTO AddVenta(VentaDTO venta);
-        VentaDTO UpdateVenta(VentaDTO venta);
-        VentaDTO DeleteVenta(int id);
+        List<VentaDTO> GetVentasByFecha(DateTime fechaInicio, DateTime fechaFin);
     }
+
 }

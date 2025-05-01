@@ -19,5 +19,7 @@
         public string MetodoPago { get; set; } = null!;
 
         public string EstadoVenta { get; set; } = null!;
+
+        public List<DetalleVentaDTO> DetalleVenta { get; set; } = new List<DetalleVentaDTO>();
     }
 }

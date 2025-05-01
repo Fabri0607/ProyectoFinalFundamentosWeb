@@ -8,46 +8,81 @@ namespace BackEnd.Controllers
     [ApiController]
     public class VentaController : ControllerBase
     {
-        IVentaService _ventaService;
+        private readonly IVentaService _ventaService;
+        private readonly ILogger<VentaController> _logger;
 
-        public VentaController(IVentaService ventaService)
+        public VentaController(
+            IVentaService ventaService,
+            ILogger<VentaController> logger)
         {
             _ventaService = ventaService;
+            _logger = logger;
         }
 
-        // GET: api/<VentaController>
+        // GET: api/Venta
         [HttpGet]
-        public IEnumerable<VentaDTO> Get()
+        public ActionResult<IEnumerable<VentaDTO>> Get()
         {
-            return _ventaService.GetVentas();
+            try
+            {
+                var ventas = _ventaService.GetVentas();
+                return Ok(ventas);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener ventas: {ex.Message}");
+                return StatusCode(500, "Error interno del servidor al obtener las ventas");
+            }
         }
 
-        // GET api/<VentaController>/5
+        // GET: api/Venta/5
         [HttpGet("{id}")]
-        public VentaDTO Get(int id)
+        public ActionResult<VentaDTO> Get(int id)
         {
-            return _ventaService.GetVentaById(id);
+            try
+            {
+                var venta = _ventaService.GetVentaById(id);
+                return Ok(venta);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener venta {id}: {ex.Message}");
+                return NotFound($"No se encontró la venta con ID {id}");
+            }
         }
 
-        // POST api/<VentaController>
+        // GET: api/Venta/Periodo?fechaInicio=2023-01-01&fechaFin=2023-01-31
+        [HttpGet("Periodo")]
+        public ActionResult<IEnumerable<VentaDTO>> GetPorPeriodo(
+            [FromQuery] DateTime fechaInicio,
+            [FromQuery] DateTime fechaFin)
+        {
+            try
+            {
+                var ventas = _ventaService.GetVentasByFecha(fechaInicio, fechaFin);
+                return Ok(ventas);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener ventas por periodo: {ex.Message}");
+                return StatusCode(500, "Error interno del servidor al obtener las ventas por periodo");
+            }
+        }
+
+        // POST: api/Venta
         [HttpPost]
-        public void Post([FromBody] VentaDTO venta)
+        public ActionResult<VentaDTO> Post([FromBody] VentaDTO venta)
         {
-            _ventaService.AddVenta(venta);
-        }
-
-        // PUT api/<VentaController>/5
-        [HttpPut]
-        public void Put([FromBody] VentaDTO venta)
-        {
-            _ventaService.UpdateVenta(venta);
-        }
-
-        // DELETE api/<VentaController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
-            _ventaService.DeleteVenta(id);
+            try
+            {
+                var resultado = _ventaService.ProcesarVenta(venta);
+                return CreatedAtAction(nameof(Get), new { id = resultado.VentaId }, resultado);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al procesar venta: {ex.Message}");
+                return BadRequest($"Error al procesar la venta: {ex.Message}");
+            }
         }
     }
 }
