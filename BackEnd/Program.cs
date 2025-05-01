@@ -49,6 +49,9 @@ builder.Services.AddScoped<IMovimientoInventarioDAL, MovimientoInventarioDALImpl
 builder.Services.AddScoped<IMovimientoInventarioService, MovimientoInventarioService>();
 
 
+builder.Services.AddScoped<IReporteService, ReporteService>();
+
+
 #endregion
 
 var app = builder.Build();
