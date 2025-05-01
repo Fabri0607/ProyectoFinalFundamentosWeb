@@ -7,8 +7,8 @@ namespace BackEnd.Services.Interfaces
 
         List<VentaDTO> GetVentas();
         VentaDTO GetVentaById(int id);
-        VentaDTO AddVenta(VentaDTO parametro);
-        VentaDTO UpdateVenta(VentaDTO parametro);
+        VentaDTO AddVenta(VentaDTO venta);
+        VentaDTO UpdateVenta(VentaDTO venta);
         VentaDTO DeleteVenta(int id);
     }
 }
