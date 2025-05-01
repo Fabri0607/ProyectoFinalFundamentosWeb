@@ -40,13 +40,13 @@ builder.Services.AddScoped<IProductoDAL, ProductoDALImpl>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 
 builder.Services.AddScoped<IVentaDAL, VentaDALImpl>();
-
+builder.Services.AddScoped<IVentaService, VentaService>();
 
 builder.Services.AddScoped<IDetalleVentaDAL, DetalleVentaDALImpl>();
 builder.Services.AddScoped<IDetalleVentaService, DetalleVentaService>();
 
 builder.Services.AddScoped<IMovimientoInventarioDAL, MovimientoInventarioDALImpl>();
-
+builder.Services.AddScoped<IMovimientoInventarioService, MovimientoInventarioService>();
 
 
 #endregion

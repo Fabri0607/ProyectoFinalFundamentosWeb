@@ -7,11 +7,13 @@ namespace BackEnd.Services.Implementations
 {
     public class ProductoService : IProductoService
     {
+        ILogger<ParametroService> _logger;
         IUnidadDeTrabajo unidadDeTrabajo;
 
-        public ProductoService(IUnidadDeTrabajo unidadDeTrabajo)
+        public ProductoService(IUnidadDeTrabajo unidadDeTrabajo, ILogger<ParametroService> logger)
         {
             this.unidadDeTrabajo = unidadDeTrabajo;
+            _logger = logger;
         }
 
         ParametroDTO Convertir(Parametro parametro)
