@@ -2,52 +2,88 @@
 using BackEnd.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace BackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class MovimientoInventarioController : ControllerBase
     {
+        private readonly IMovimientoInventarioService _movimientoService;
+        private readonly ILogger<MovimientoInventarioController> _logger;
 
-        IMovimientoInventarioService _movimientoInventarioService;
+        public MovimientoInventarioController(
+            IMovimientoInventarioService movimientoService,
+            ILogger<MovimientoInventarioController> logger)
+        {
+            _movimientoService = movimientoService;
+            _logger = logger;
+        }
 
-        // GET: api/<MovimientoInventarioController>
+        // GET: api/MovimientoInventario
         [HttpGet]
-        public IEnumerable<MovimientoInventarioDTO> Get()
+        public ActionResult<IEnumerable<MovimientoInventarioDTO>> GetAll()
         {
-           var result = _movimientoInventarioService.GetAll();
-            return result;
+            try
+            {
+                var movimientos = _movimientoService.GetAllMovimientos();
+                return Ok(movimientos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener movimientos: {ex.Message}");
+                return StatusCode(500, "Error interno del servidor al obtener los movimientos");
+            }
         }
 
-        // GET api/<MovimientoInventarioController>/5
+        // GET: api/MovimientoInventario/5
         [HttpGet("{id}")]
-        public MovimientoInventarioDTO Get(int id)
+        public ActionResult<MovimientoInventarioDTO> Get(int id)
         {
-            var result = _movimientoInventarioService.Get(id);
-            return result;
+            try
+            {
+                var movimiento = _movimientoService.GetMovimientoById(id);
+                return Ok(movimiento);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener movimiento {id}: {ex.Message}");
+                return NotFound($"No se encontró el movimiento con ID {id}");
+            }
         }
 
-        // POST api/<MovimientoInventarioController>
+        // GET: api/MovimientoInventario/Producto/5
+        [HttpGet("Producto/{productoId}")]
+        public ActionResult<IEnumerable<MovimientoInventarioDTO>> GetByProducto(int productoId)
+        {
+            try
+            {
+                var movimientos = _movimientoService.GetMovimientosByProducto(productoId);
+                return Ok(movimientos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener movimientos del producto {productoId}: {ex.Message}");
+                return StatusCode(500, $"Error al obtener movimientos del producto {productoId}");
+            }
+        }
+
+        // POST: api/MovimientoInventario
         [HttpPost]
-        public void Post([FromBody] MovimientoInventarioDTO value)
+        public ActionResult<MovimientoInventarioDTO> Post([FromBody] MovimientoInventarioDTO movimiento)
         {
-            _movimientoInventarioService.Add(value);
+            try
+            {
+                var resultado = _movimientoService.AddMovimiento(movimiento);
+                return CreatedAtAction(nameof(Get), new { id = resultado.MovimientoId }, resultado);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al crear movimiento: {ex.Message}");
+                return BadRequest($"Error al crear el movimiento: {ex.Message}");
+            }
         }
 
-        // PUT api/<MovimientoInventarioController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] MovimientoInventarioDTO value)
-        {
-            _movimientoInventarioService.Update(value);
-        }
-
-        // DELETE api/<MovimientoInventarioController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
-            _movimientoInventarioService.Delete(id);
-        }
+        // No implementamos PUT porque los movimientos de inventario normalmente no se modifican
+        // Si se necesita corregir un movimiento, se debería realizar un nuevo movimiento en sentido opuesto
     }
 }
