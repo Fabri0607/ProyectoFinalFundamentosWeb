@@ -46,7 +46,7 @@ builder.Services.AddScoped<IDetalleVentaDAL, DetalleVentaDALImpl>();
 
 
 builder.Services.AddScoped<IMovimientoInventarioDAL, MovimientoInventarioDALImpl>();
-
+builder.Services.AddScoped<IMovimientoInventarioService, MovimientoInventarioService>();
 
 
 #endregion
