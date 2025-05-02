@@ -30,11 +30,10 @@ public partial class SistemaInventarioVentasContext : DbContext
     //=> optionsBuilder.UseSqlServer("Server=PC-FABRI\\SQLEXPRESS;Database=SistemaInventarioVentas;Integrated Security=True;Trusted_Connection=True;TrustServerCertificate=True;");
 
     //Forma para conectarse de Nahum (NO BORRAR)
-    /* protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
- => optionsBuilder.UseSqlServer("Server=192.168.0.13;Database=SistemaInventarioVentas;User Id=sa;Password=Mordecail#2014;TrustServerCertificate=True;");
-    */
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-=> optionsBuilder.UseSqlServer("Server=PC-FABRI\\SQLEXPRESS;Database=SistemaInventarioVentas;User Id=sa;Password=root123;TrustServerCertificate=True;");
+ => optionsBuilder.UseSqlServer("Server=192.168.0.11;Database=SistemaInventarioVentas;User Id=sa;Password=Mordecail#2014;TrustServerCertificate=True;");
+    
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

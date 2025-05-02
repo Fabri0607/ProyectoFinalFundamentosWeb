@@ -102,11 +102,6 @@ namespace BackEnd.Services.Implementations
                     // Guardar el detalle
                     _unidadDeTrabajo.DetalleVentaDAL.Add(detalle);
 
-                    // Actualizar el stock del producto
-                    producto.Stock -= cantidad;
-                    producto.FechaModificacion = DateTime.Now;
-                    _unidadDeTrabajo.ProductoDAL.Update(producto);
-
                     // Registrar el movimiento de inventario
                     // Asumimos que existe un tipo de movimiento para ventas con ID 2 (salida)
                     var movimiento = new MovimientoInventarioDTO
@@ -114,7 +109,7 @@ namespace BackEnd.Services.Implementations
                         ProductoId = productoId,
                         Cantidad = cantidad,
                         FechaMovimiento = DateTime.Now,
-                        TipoMovimientoId = 2, // Salida por venta
+                        TipoMovimientoId = 5, // Salida por venta
                         Notas = $"Venta #{venta.NumeroFactura}",
                         Referencia = venta.VentaId.ToString()
                     };
