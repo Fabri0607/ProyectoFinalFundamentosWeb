@@ -71,11 +71,11 @@ namespace BackEnd.Controllers
 
         // POST: api/Venta
         [HttpPost]
-        public ActionResult<VentaDTO> Post([FromBody] VentaDTO venta)
+        public ActionResult<VentaDTO> Post([FromBody] CrearVentaDTO crearVenta)
         {
             try
             {
-                var resultado = _ventaService.ProcesarVenta(venta);
+                var resultado = _ventaService.ProcesarVenta(crearVenta);
                 return CreatedAtAction(nameof(Get), new { id = resultado.VentaId }, resultado);
             }
             catch (Exception ex)

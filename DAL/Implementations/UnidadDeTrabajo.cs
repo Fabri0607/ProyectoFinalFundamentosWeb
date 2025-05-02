@@ -21,7 +21,7 @@ namespace DAL.Implementations
         public IMovimientoInventarioDAL MovimientoInventarioDAL { get; set; }
 
 
-        SistemaInventarioVentasContext context;
+        public SistemaInventarioVentasContext context;
 
         public UnidadDeTrabajo(IParametroDAL parametroDAL, SistemaInventarioVentasContext context, 
             IProductoDAL productoDAL, IVentaDAL ventaDAL, IDetalleVentaDAL detalleVentaDAL, 

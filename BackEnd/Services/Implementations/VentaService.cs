@@ -1,7 +1,9 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
+using DAL.Implementations;
 using DAL.Interfaces;
 using Entities.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace BackEnd.Services.Implementations
 {
@@ -21,21 +23,24 @@ namespace BackEnd.Services.Implementations
             _movimientoService = movimientoService;
         }
 
-        // Método para procesar una venta completa (cabecera y detalles)
-        public VentaDTO ProcesarVenta(VentaDTO ventaDTO)
+        // Método modificado para procesar la venta con el nuevo DTO de entrada
+        public VentaDTO ProcesarVenta(CrearVentaDTO crearVentaDTO)
         {
             try
             {
                 _logger.LogInformation("Iniciando procesamiento de venta");
 
                 // Validar que la venta tenga detalles
-                if (ventaDTO.DetalleVenta == null || !ventaDTO.DetalleVenta.Any())
+                if (crearVentaDTO.DetalleVenta == null || !crearVentaDTO.DetalleVenta.Any())
                 {
                     throw new Exception("La venta debe tener al menos un producto");
                 }
 
-                // Validar que los productos existan y tengan stock suficiente
-                foreach (var detalle in ventaDTO.DetalleVenta)
+                // Validar productos y calcular subtotales
+                decimal subtotal = 0;
+                List<(int ProductoId, int Cantidad, decimal PrecioUnitario, decimal Subtotal, decimal Descuento)> detallesCalculados = new List<(int, int, decimal, decimal, decimal)>();
+
+                foreach (var detalle in crearVentaDTO.DetalleVenta)
                 {
                     var producto = _unidadDeTrabajo.ProductoDAL.FindById(detalle.ProductoId);
 
@@ -49,54 +54,56 @@ namespace BackEnd.Services.Implementations
                         throw new Exception($"Stock insuficiente para el producto '{producto.Nombre}'. Stock actual: {producto.Stock}, Cantidad solicitada: {detalle.Cantidad}");
                     }
 
-                    // Calcular el subtotal si no viene calculado
-                    if (detalle.Subtotal <= 0)
-                    {
-                        detalle.PrecioUnitario = producto.PrecioVenta;
-                        detalle.Subtotal = detalle.PrecioUnitario * detalle.Cantidad - detalle.Descuento;
-                    }
+                    // Calcular el subtotal del detalle
+                    decimal precioUnitario = producto.PrecioVenta;
+                    decimal subtotalDetalle = precioUnitario * detalle.Cantidad - detalle.Descuento;
+
+                    detallesCalculados.Add((detalle.ProductoId, detalle.Cantidad, precioUnitario, subtotalDetalle, detalle.Descuento));
+                    subtotal += subtotalDetalle;
                 }
+
+                // Calcular impuestos (13% por defecto)
+                decimal impuestos = CalcularImpuestos(subtotal);
+                decimal total = subtotal + impuestos;
 
                 // Crear la venta
                 var venta = new Venta
                 {
                     FechaVenta = DateTime.Now,
-                    Notas = ventaDTO.Notas,
+                    Notas = crearVentaDTO.Notas,
                     NumeroFactura = GenerarNumeroFactura(),
-                    Subtotal = ventaDTO.DetalleVenta.Sum(d => d.Subtotal),
-                    Impuestos = CalcularImpuestos(ventaDTO.DetalleVenta.Sum(d => d.Subtotal)),
-                    MetodoPago = ventaDTO.MetodoPago,
+                    Subtotal = subtotal,
+                    Impuestos = impuestos,
+                    Total = total,
+                    MetodoPago = crearVentaDTO.MetodoPago,
                     EstadoVenta = "Completada"
                 };
-
-                // Calcular total
-                venta.Total = venta.Subtotal + venta.Impuestos;
 
                 // Guardar la venta
                 _unidadDeTrabajo.VentaDAL.Add(venta);
                 _unidadDeTrabajo.Complete(); // Necesitamos el ID de la venta para los detalles
 
                 // Ahora procesamos los detalles
-                foreach (var detalleDTO in ventaDTO.DetalleVenta)
+                foreach (var (productoId, cantidad, precioUnitario, subtotalDetalle, descuento) in detallesCalculados)
                 {
-                    var producto = _unidadDeTrabajo.ProductoDAL.FindById(detalleDTO.ProductoId);
+                    var producto = _unidadDeTrabajo.ProductoDAL.FindById(productoId);
 
                     // Crear el detalle de venta
                     var detalle = new DetalleVenta
                     {
                         VentaId = venta.VentaId,
-                        ProductoId = detalleDTO.ProductoId,
-                        Cantidad = detalleDTO.Cantidad,
-                        PrecioUnitario = detalleDTO.PrecioUnitario,
-                        Descuento = detalleDTO.Descuento,
-                        Subtotal = detalleDTO.Subtotal
+                        ProductoId = productoId,
+                        Cantidad = cantidad,
+                        PrecioUnitario = precioUnitario,
+                        Descuento = descuento,
+                        Subtotal = subtotalDetalle
                     };
 
                     // Guardar el detalle
                     _unidadDeTrabajo.DetalleVentaDAL.Add(detalle);
 
                     // Actualizar el stock del producto
-                    producto.Stock -= detalle.Cantidad;
+                    producto.Stock -= cantidad;
                     producto.FechaModificacion = DateTime.Now;
                     _unidadDeTrabajo.ProductoDAL.Update(producto);
 
@@ -104,8 +111,8 @@ namespace BackEnd.Services.Implementations
                     // Asumimos que existe un tipo de movimiento para ventas con ID 2 (salida)
                     var movimiento = new MovimientoInventarioDTO
                     {
-                        ProductoId = detalle.ProductoId,
-                        Cantidad = detalle.Cantidad,
+                        ProductoId = productoId,
+                        Cantidad = cantidad,
                         FechaMovimiento = DateTime.Now,
                         TipoMovimientoId = 2, // Salida por venta
                         Notas = $"Venta #{venta.NumeroFactura}",
@@ -118,16 +125,8 @@ namespace BackEnd.Services.Implementations
                 // Guardar todos los cambios
                 _unidadDeTrabajo.Complete();
 
-                // Devolver la venta procesada
-                ventaDTO.VentaId = venta.VentaId;
-                ventaDTO.FechaVenta = venta.FechaVenta;
-                ventaDTO.NumeroFactura = venta.NumeroFactura;
-                ventaDTO.Subtotal = venta.Subtotal;
-                ventaDTO.Impuestos = venta.Impuestos;
-                ventaDTO.Total = venta.Total;
-                ventaDTO.EstadoVenta = venta.EstadoVenta;
-
-                return ventaDTO;
+                // Devolver la venta procesada convertida a DTO
+                return ConvertirVentaCompletaADTO(venta);
             }
             catch (Exception ex)
             {
@@ -140,7 +139,11 @@ namespace BackEnd.Services.Implementations
         {
             try
             {
-                var ventas = _unidadDeTrabajo.VentaDAL.Get()
+                // Obtenemos las ventas junto con sus detalles en una sola consulta
+                var context = _unidadDeTrabajo as UnidadDeTrabajo;
+                var ventas = context.context.Venta
+                    .Include(v => v.DetalleVenta)
+                    .ThenInclude(d => d.Producto)
                     .OrderByDescending(v => v.FechaVenta)
                     .ToList();
 
@@ -148,7 +151,7 @@ namespace BackEnd.Services.Implementations
 
                 foreach (var venta in ventas)
                 {
-                    resultado.Add(ConvertirVenta(venta));
+                    resultado.Add(ConvertirVentaCompletaADTO(venta));
                 }
 
                 return resultado;
@@ -164,14 +167,19 @@ namespace BackEnd.Services.Implementations
         {
             try
             {
-                var venta = _unidadDeTrabajo.VentaDAL.FindById(id);
+                // Obtenemos la venta junto con sus detalles en una sola consulta
+                var context = _unidadDeTrabajo as UnidadDeTrabajo;
+                var venta = context.context.Venta
+                    .Include(v => v.DetalleVenta)
+                    .ThenInclude(d => d.Producto)
+                    .FirstOrDefault(v => v.VentaId == id);
 
                 if (venta == null)
                 {
                     throw new Exception($"No existe la venta con ID {id}");
                 }
 
-                return ConvertirVenta(venta);
+                return ConvertirVentaCompletaADTO(venta);
             }
             catch (Exception ex)
             {
@@ -180,8 +188,40 @@ namespace BackEnd.Services.Implementations
             }
         }
 
-        // Método auxiliar para convertir de Venta a VentaDTO
-        private VentaDTO ConvertirVenta(Venta venta)
+        public List<VentaDTO> GetVentasByFecha(DateTime fechaInicio, DateTime fechaFin)
+        {
+            try
+            {
+                // Aseguramos que fechaFin sea el final del día
+                fechaFin = fechaFin.Date.AddDays(1).AddSeconds(-1);
+
+                // Obtenemos las ventas junto con sus detalles en una sola consulta
+                var context = _unidadDeTrabajo as UnidadDeTrabajo;
+                var ventas = context.context.Venta
+                    .Include(v => v.DetalleVenta)
+                    .ThenInclude(d => d.Producto)
+                    .Where(v => v.FechaVenta >= fechaInicio && v.FechaVenta <= fechaFin)
+                    .OrderByDescending(v => v.FechaVenta)
+                    .ToList();
+
+                List<VentaDTO> resultado = new List<VentaDTO>();
+
+                foreach (var venta in ventas)
+                {
+                    resultado.Add(ConvertirVentaCompletaADTO(venta));
+                }
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al obtener ventas por fecha: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Método auxiliar para convertir de Venta a VentaDTO incluyendo sus detalles
+        private VentaDTO ConvertirVentaCompletaADTO(Venta venta)
         {
             var ventaDTO = new VentaDTO
             {
@@ -197,12 +237,12 @@ namespace BackEnd.Services.Implementations
                 DetalleVenta = new List<DetalleVentaDTO>()
             };
 
-            // Obtener los detalles de la venta (esto asume que Entity Framework carga la relación)
+            // Convertir los detalles de venta
             if (venta.DetalleVenta != null)
             {
                 foreach (var detalle in venta.DetalleVenta)
                 {
-                    ventaDTO.DetalleVenta.Add(new DetalleVentaDTO
+                    var detalleDTO = new DetalleVentaDTO
                     {
                         DetalleVentaId = detalle.DetalleVentaId,
                         VentaId = detalle.VentaId,
@@ -211,7 +251,9 @@ namespace BackEnd.Services.Implementations
                         PrecioUnitario = detalle.PrecioUnitario,
                         Subtotal = detalle.Subtotal,
                         Descuento = detalle.Descuento
-                    });
+                    };
+
+                    ventaDTO.DetalleVenta.Add(detalleDTO);
                 }
             }
 
@@ -232,31 +274,6 @@ namespace BackEnd.Services.Implementations
         private decimal CalcularImpuestos(decimal subtotal)
         {
             return Math.Round(subtotal * 0.13m, 2);
-        }
-
-        public List<VentaDTO> GetVentasByFecha(DateTime fechaInicio, DateTime fechaFin)
-        {
-            try
-            {
-                var ventas = _unidadDeTrabajo.VentaDAL.Get()
-                    .Where(v => v.FechaVenta >= fechaInicio && v.FechaVenta <= fechaFin)
-                    .OrderByDescending(v => v.FechaVenta)
-                    .ToList();
-
-                List<VentaDTO> resultado = new List<VentaDTO>();
-
-                foreach (var venta in ventas)
-                {
-                    resultado.Add(ConvertirVenta(venta));
-                }
-
-                return resultado;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error al obtener ventas por fecha: {ex.Message}");
-                throw;
-            }
         }
     }
 }
