@@ -156,6 +156,14 @@ namespace BackEnd.Services.Implementations
             if (producto != null)
             {
                 // Aquí podrías implementar lógica para verificar stock, etc.
+                if (producto.Stock < detalleVenta.Cantidad)
+                {
+                    throw new InvalidOperationException("El stock del producto es insuficiente para realizar la venta.");
+                }
+
+                // Reducir el stock del producto
+                producto.Stock -= detalleVenta.Cantidad;
+                unidadDeTrabajo.ProductoDAL.Update(producto);
             }
 
             unidadDeTrabajo.DetalleVentaDAL.Add(detalleVenta);
