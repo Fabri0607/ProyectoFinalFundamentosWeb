@@ -22,11 +22,17 @@ builder.Host.UseSerilog((ctx, lc) => lc
                         .File("logs/logsbackend", rollingInterval: RollingInterval.Day)
                         .MinimumLevel.Error());
 
-
-
-
 #endregion
 
+// Configuración de CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder => builder
+            .AllowAnyOrigin() // En producción, especificar el origen exacto: .WithOrigins("http://localhost:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
 
 #region DI
 builder.Services.AddDbContext<SistemaInventarioVentasContext>();
@@ -48,9 +54,7 @@ builder.Services.AddScoped<IDetalleVentaService, DetalleVentaService>();
 builder.Services.AddScoped<IMovimientoInventarioDAL, MovimientoInventarioDALImpl>();
 builder.Services.AddScoped<IMovimientoInventarioService, MovimientoInventarioService>();
 
-
 builder.Services.AddScoped<IReporteService, ReporteService>();
-
 
 #endregion
 
@@ -62,6 +66,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Usar CORS 
+app.UseCors("AllowReactApp");
 
 app.UseAuthorization();
 
