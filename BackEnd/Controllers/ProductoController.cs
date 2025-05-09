@@ -1,6 +1,7 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace BackEnd.Controllers
 {
@@ -47,9 +48,21 @@ namespace BackEnd.Controllers
 
         // DELETE api/<ProductoController>/5
         [HttpDelete("{id}")]
-        public void Delete(int id)
+        public IActionResult Delete(int id)
         {
-            _productoService.Delete(id);
+            try
+            {
+                _productoService.Delete(id);
+                return NoContent();
+            }
+            catch (SqlException ex) when (ex.Number == 547) // 547 es el código para conflicto de clave foránea
+            {
+                return Conflict(new { message = "No se puede eliminar el producto porque tiene ventas asociadas" });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "No se puede eliminar el producto porque tiene ventas asociadas" });
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace BackEnd.Controllers
 {
@@ -45,9 +47,25 @@ namespace BackEnd.Controllers
 
         // DELETE api/<ParametroController>/5
         [HttpDelete("{id}")]
-        public void Delete(int id)
+        public IActionResult Delete(int id)
         {
-            _parametroService.DeleteParametro(id);
+            try
+            {
+                _parametroService.DeleteParametro(id);
+                return NoContent();
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && sqlEx.Number == 547)
+            {
+                return Conflict(new { message = "No se puede eliminar el parámetro porque está asociado a productos o movimientos" });
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                return Conflict(new { message = "No se puede eliminar el parámetro porque está asociado a productos o movimientos" });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "Error interno al eliminar el parámetro" });
+            }
         }
     }
 }
