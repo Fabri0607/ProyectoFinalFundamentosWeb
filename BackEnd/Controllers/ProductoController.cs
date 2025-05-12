@@ -1,5 +1,6 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 
@@ -18,6 +19,7 @@ namespace BackEnd.Controllers
 
         // GET: api/<ProductoController>
         [HttpGet]
+        [Authorize]
         public IEnumerable<ProductoDTO> Get()
         {
             var result = _productoService.GetAll();
