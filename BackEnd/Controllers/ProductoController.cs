@@ -8,6 +8,7 @@ namespace BackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProductoController : ControllerBase
     {
         IProductoService _productoService;
@@ -19,7 +20,7 @@ namespace BackEnd.Controllers
 
         // GET: api/<ProductoController>
         [HttpGet]
-        [Authorize]
+        
         public IEnumerable<ProductoDTO> Get()
         {
             var result = _productoService.GetAll();
