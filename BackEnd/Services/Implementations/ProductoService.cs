@@ -9,11 +9,13 @@ namespace BackEnd.Services.Implementations
     {
         ILogger<ParametroService> _logger;
         IUnidadDeTrabajo unidadDeTrabajo;
+        private readonly IMovimientoInventarioService _movimientoService;
 
-        public ProductoService(IUnidadDeTrabajo unidadDeTrabajo, ILogger<ParametroService> logger)
+        public ProductoService(IUnidadDeTrabajo unidadDeTrabajo, ILogger<ParametroService> logger, IMovimientoInventarioService movimientoService)
         {
             this.unidadDeTrabajo = unidadDeTrabajo;
             _logger = logger;
+            _movimientoService = movimientoService;
         }
 
         ParametroDTO Convertir(Parametro parametro)
@@ -85,6 +87,21 @@ namespace BackEnd.Services.Implementations
             producto.FechaModificacion = null; // <- no hay modificación aún
 
             unidadDeTrabajo.ProductoDAL.Add(producto);
+
+            unidadDeTrabajo.Complete();
+
+            var movimiento = new MovimientoInventarioDTO
+            {
+                ProductoId = producto.ProductoId,
+                Cantidad = producto.Stock,
+                FechaMovimiento = DateTime.Now,
+                TipoMovimientoId = 4, // Entrada
+                Notas = $"Descripcion: {producto.Descripcion}",
+                Referencia = producto.CategoriaId.ToString()
+            };
+
+            _movimientoService.AddMovimiento(movimiento);
+
             unidadDeTrabajo.Complete();
             return productoDTO;
         }
@@ -127,6 +144,19 @@ namespace BackEnd.Services.Implementations
             unidadDeTrabajo.ProductoDAL.Update(producto);
             unidadDeTrabajo.Complete();
 
+            var movimiento = new MovimientoInventarioDTO
+            {
+                ProductoId = producto.ProductoId,
+                Cantidad = producto.Stock,
+                FechaMovimiento = DateTime.Now,
+                TipoMovimientoId = 6, // Ajuste
+                Notas = $"Descripcion: {producto.Descripcion}",
+                Referencia = producto.CategoriaId.ToString()
+            };
+
+            _movimientoService.AddMovimiento(movimiento);
+
+            unidadDeTrabajo.Complete();
             return productoDTO;
         }
 

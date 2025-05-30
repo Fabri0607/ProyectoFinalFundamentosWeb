@@ -13,10 +13,12 @@ namespace BackEnd.Controllers
     public class ProductoController : ControllerBase
     {
         IProductoService _productoService;
+        IMovimientoInventarioService _movimientoService;
 
-        public ProductoController(IProductoService productoService)
+        public ProductoController(IProductoService productoService, IMovimientoInventarioService movimientoService)
         {
             this._productoService = productoService;
+            _movimientoService = movimientoService;
         }
 
         // GET: api/<ProductoController>
