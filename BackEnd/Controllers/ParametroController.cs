@@ -1,5 +1,6 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ namespace BackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ParametroController : ControllerBase
     {
         IParametroService _parametroService;

@@ -1,11 +1,13 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class DetalleVentaController : ControllerBase
     {
         IDetalleVentaService _detalleVentaService;
