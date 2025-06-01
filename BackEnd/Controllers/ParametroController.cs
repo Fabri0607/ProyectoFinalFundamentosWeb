@@ -10,6 +10,7 @@ namespace BackEnd.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Authorize(Roles = "Admin,Colaborador")]
     public class ParametroController : ControllerBase
     {
         IParametroService _parametroService;

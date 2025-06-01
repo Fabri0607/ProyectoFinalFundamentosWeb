@@ -12,6 +12,42 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+#region Roles
+
+// Seed roles and admin user
+async Task SeedRolesAndAdmin(RoleManager<IdentityRole> roleManager, UserManager<IdentityUser> userManager)
+{
+    string[] roleNames = { "Admin", "Colaborador", "Vendedor" };
+    foreach (var roleName in roleNames)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+
+    // Create a default admin user if none exists
+    var adminUser = new IdentityUser
+    {
+        UserName = "admin",
+        Email = "admin@example.com",
+        EmailConfirmed = true
+    };
+
+    string adminPassword = "Admin123!";
+    var user = await userManager.FindByNameAsync(adminUser.UserName);
+    if (user == null)
+    {
+        var createAdmin = await userManager.CreateAsync(adminUser, adminPassword);
+        if (createAdmin.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+}
+#endregion
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -142,6 +178,8 @@ builder.Services.AddScoped<IReporteService, ReporteService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+builder.Services.AddScoped<RoleManager<IdentityRole>>();
+
 #endregion
 
 var app = builder.Build();
@@ -151,6 +189,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+// Seed roles and admin user
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+    await SeedRolesAndAdmin(roleManager, userManager);
 }
 
 // Usar CORS 

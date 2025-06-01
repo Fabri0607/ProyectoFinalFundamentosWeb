@@ -9,7 +9,7 @@ namespace BackEnd.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-
+    [Authorize(Roles = "Admin,Colaborador,Vendedor")]
     public class ProductoController : ControllerBase
     {
         IProductoService _productoService;

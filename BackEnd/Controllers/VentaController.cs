@@ -8,6 +8,7 @@ namespace BackEnd.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Authorize(Roles = "Admin,Colaborador,Vendedor")]
     public class VentaController : ControllerBase
     {
         private readonly IVentaService _ventaService;

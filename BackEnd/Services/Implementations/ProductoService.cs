@@ -1,5 +1,6 @@
 ﻿using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
+using DAL.Implementations;
 using DAL.Interfaces;
 using Entities.Entities;
 
@@ -110,10 +111,44 @@ namespace BackEnd.Services.Implementations
 
         public ProductoDTO Delete(int ProductoId)
         {
-            var producto = new Producto { ProductoId = ProductoId };
-            unidadDeTrabajo.ProductoDAL.Remove(producto);
-            unidadDeTrabajo.Complete();
-            return new ProductoDTO { ProductoId = ProductoId };
+            try
+            {
+                _logger.LogInformation($"Iniciando eliminación del producto con ID {ProductoId}");
+
+                // Verificar si el producto existe
+                var producto = unidadDeTrabajo.ProductoDAL.FindById(ProductoId);
+                if (producto == null)
+                {
+                    _logger.LogError($"Producto no encontrado: ID {ProductoId}");
+                    throw new Exception($"No existe el producto con ID {ProductoId}");
+                }
+
+                // Obtener y eliminar todos los movimientos de inventario asociados
+                var movimientos = unidadDeTrabajo.MovimientoInventarioDAL.Get()
+                    .Where(m => m.ProductoId == ProductoId)
+                    .ToList();
+
+                foreach (var movimiento in movimientos)
+                {
+                    unidadDeTrabajo.MovimientoInventarioDAL.Remove(movimiento);
+                    _logger.LogInformation($"Eliminado movimiento ID {movimiento.MovimientoId} asociado al producto ID {ProductoId}");
+                }
+
+                // Eliminar el producto
+                unidadDeTrabajo.ProductoDAL.Remove(producto);
+                _logger.LogInformation($"Producto ID {ProductoId} eliminado");
+
+                // Guardar todos los cambios en una transacción
+                unidadDeTrabajo.Complete();
+
+                _logger.LogInformation($"Eliminación completada para el producto ID {ProductoId}");
+                return new ProductoDTO { ProductoId = ProductoId };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error al eliminar el producto ID {ProductoId}: {ex.Message}");
+                throw;
+            }
         }
 
         public ProductoDTO Get(int ProductoId)
