@@ -1,4 +1,5 @@
 ﻿using BackEnd.DTO;
+using BackEnd.Exceptions;
 using BackEnd.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -81,10 +82,29 @@ namespace BackEnd.Controllers
                 var resultado = _ventaService.ProcesarVenta(crearVenta);
                 return CreatedAtAction(nameof(Get), new { id = resultado.VentaId }, resultado);
             }
+            catch (StockInsuficienteException ex)
+            {
+                _logger.LogError($"Error de stock al procesar venta: {ex.Message}");
+                return BadRequest(new
+                {
+                    Error = "StockInsuficiente",
+                    Message = ex.Message,
+                    Details = new
+                    {
+                        ex.ProductoNombre,
+                        ex.StockDisponible,
+                        ex.CantidadSolicitada
+                    }
+                });
+            }
             catch (Exception ex)
             {
                 _logger.LogError($"Error al procesar venta: {ex.Message}");
-                return BadRequest($"Error al procesar la venta: {ex.Message}");
+                return BadRequest(new
+                {
+                    Error = "General",
+                    Message = $"Error al procesar la venta: {ex.Message}"
+                });
             }
         }
     }

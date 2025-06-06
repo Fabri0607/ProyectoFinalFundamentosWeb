@@ -1,4 +1,5 @@
 ﻿using BackEnd.DTO;
+using BackEnd.Exceptions;
 using BackEnd.Services.Interfaces;
 using DAL.Implementations;
 using DAL.Interfaces;
@@ -51,7 +52,7 @@ namespace BackEnd.Services.Implementations
 
                     if (producto.Stock < detalle.Cantidad)
                     {
-                        throw new Exception($"Stock insuficiente para el producto '{producto.Nombre}'. Stock actual: {producto.Stock}, Cantidad solicitada: {detalle.Cantidad}");
+                        throw new StockInsuficienteException(producto.Nombre, producto.Stock, detalle.Cantidad);
                     }
 
                     // Calcular el subtotal del detalle

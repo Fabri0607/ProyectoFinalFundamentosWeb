@@ -22,24 +22,30 @@ namespace BackEnd.Services.Implementations
             try
             {
                 // Obtener todos los productos
-                var productos = _unidadDeTrabajo.ProductoDAL.Get();
+                var productos = _unidadDeTrabajo.ProductoDAL.Get().ToList();
 
-                // Calcular valorización total del inventario
-                decimal valorizacionTotal = productos.Sum(p => p.Stock * p.PrecioCompra);
+                // Calcular valorización total del inventario (usando precio de venta)
+                decimal valorizacionTotal = productos.Sum(p => p.Stock * p.PrecioVenta);
+
+                // Obtener todas las categorías/parámetros una sola vez
+                var categorias = _unidadDeTrabajo.ParametroDAL.Get().ToList();
 
                 // Contar productos por categoría
                 var productosPorCategoria = productos
                     .GroupBy(p => p.CategoriaId)
-                    .Select(g => new CategoriaInventarioDTO
-                    {
-                        CategoriaId = g.Key,
-                        CategoriaNombre = _unidadDeTrabajo.ParametroDAL.FindById(g.Key)?.Valor ?? "",
-                        CantidadProductos = g.Count(),
-                        ValorizacionTotal = g.Sum(p => p.Stock * p.PrecioCompra)
+                    .Select(g => {
+                        var categoria = categorias.FirstOrDefault(c => c.ParametroId == g.Key);
+                        return new CategoriaInventarioDTO
+                        {
+                            CategoriaId = g.Key,
+                            CategoriaNombre = categoria?.Valor ?? "Sin Categoría",
+                            CantidadProductos = g.Count(),
+                            ValorizacionTotal = g.Sum(p => p.Stock * p.PrecioVenta)
+                        };
                     })
                     .ToList();
 
-                // Productos con stock bajo (menor al mínimo)
+                // Productos con stock bajo (menor o igual al mínimo)
                 var productosStockBajo = productos
                     .Where(p => p.Stock <= p.StockMinimo)
                     .Select(p => new ProductoStockBajoDTO
@@ -57,7 +63,8 @@ namespace BackEnd.Services.Implementations
                 // Productos sin movimiento en el último mes
                 DateTime fechaLimite = DateTime.Now.AddMonths(-1);
 
-                var productosIdConMovimiento = _unidadDeTrabajo.MovimientoInventarioDAL.Get()
+                var movimientos = _unidadDeTrabajo.MovimientoInventarioDAL.Get().ToList();
+                var productosIdConMovimiento = movimientos
                     .Where(m => m.FechaMovimiento >= fechaLimite)
                     .Select(m => m.ProductoId)
                     .Distinct()
@@ -65,16 +72,20 @@ namespace BackEnd.Services.Implementations
 
                 var productosSinMovimiento = productos
                     .Where(p => !productosIdConMovimiento.Contains(p.ProductoId))
-                    .Select(p => new ProductoSinMovimientoDTO
-                    {
-                        ProductoId = p.ProductoId,
-                        Nombre = p.Nombre,
-                        Codigo = p.Codigo,
-                        Stock = p.Stock,
-                        UltimoMovimiento = _unidadDeTrabajo.MovimientoInventarioDAL.Get()
+                    .Select(p => {
+                        var ultimoMovimiento = movimientos
                             .Where(m => m.ProductoId == p.ProductoId)
                             .OrderByDescending(m => m.FechaMovimiento)
-                            .FirstOrDefault()?.FechaMovimiento
+                            .FirstOrDefault();
+
+                        return new ProductoSinMovimientoDTO
+                        {
+                            ProductoId = p.ProductoId,
+                            Nombre = p.Nombre,
+                            Codigo = p.Codigo,
+                            Stock = p.Stock,
+                            UltimoMovimiento = ultimoMovimiento?.FechaMovimiento
+                        };
                     })
                     .OrderBy(p => p.UltimoMovimiento)
                     .ToList();
@@ -116,6 +127,9 @@ namespace BackEnd.Services.Implementations
                 decimal costoTotal = 0;
                 decimal utilidadTotal = 0;
 
+                // Obtener productos una sola vez para optimizar
+                var productos = _unidadDeTrabajo.ProductoDAL.Get().ToList();
+
                 // Ventas por día
                 var ventasPorDia = ventas
                     .GroupBy(v => v.FechaVenta.Date)
@@ -131,13 +145,16 @@ namespace BackEnd.Services.Implementations
                 // Productos más vendidos
                 var productosMasVendidos = detallesVenta
                     .GroupBy(d => d.ProductoId)
-                    .Select(g => new ProductoVentaDTO
-                    {
-                        ProductoId = g.Key,
-                        Nombre = _unidadDeTrabajo.ProductoDAL.FindById(g.Key)?.Nombre ?? "",
-                        Codigo = _unidadDeTrabajo.ProductoDAL.FindById(g.Key)?.Codigo ?? "",
-                        CantidadVendida = g.Sum(d => d.Cantidad),
-                        TotalVentas = g.Sum(d => d.Subtotal)
+                    .Select(g => {
+                        var producto = productos.FirstOrDefault(p => p.ProductoId == g.Key);
+                        return new ProductoVentaDTO
+                        {
+                            ProductoId = g.Key,
+                            Nombre = producto?.Nombre ?? "Producto no encontrado",
+                            Codigo = producto?.Codigo ?? "",
+                            CantidadVendida = g.Sum(d => d.Cantidad),
+                            TotalVentas = g.Sum(d => d.Subtotal)
+                        };
                     })
                     .OrderByDescending(p => p.CantidadVendida)
                     .Take(10)
@@ -146,7 +163,7 @@ namespace BackEnd.Services.Implementations
                 // Calcular costo y utilidad
                 foreach (var detalle in detallesVenta)
                 {
-                    var producto = _unidadDeTrabajo.ProductoDAL.FindById(detalle.ProductoId);
+                    var producto = productos.FirstOrDefault(p => p.ProductoId == detalle.ProductoId);
                     if (producto != null)
                     {
                         decimal costoProducto = producto.PrecioCompra * detalle.Cantidad;
