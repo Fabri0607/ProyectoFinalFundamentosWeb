@@ -172,26 +172,113 @@ namespace BackEnd.Services.Implementations
 
         public ProductoDTO Update(ProductoDTO productoDTO)
         {
-            var producto = Convertir(productoDTO);
+            // Obtener el producto actual de la base de datos
+            var productoActual = unidadDeTrabajo.ProductoDAL.FindById(productoDTO.ProductoId);
+            if (productoActual == null)
+            {
+                throw new Exception("Producto no encontrado");
+            }
 
-            producto.FechaModificacion = DateTime.Now; // <- actualizas la fecha de modificación
+            // Capturar los valores originales ANTES de hacer cualquier cambio
+            var valoresOriginales = new
+            {
+                Nombre = productoActual.Nombre,
+                Descripcion = productoActual.Descripcion,
+                Stock = productoActual.Stock,
+                StockMinimo = productoActual.StockMinimo,
+                PrecioCompra = productoActual.PrecioCompra,
+                PrecioVenta = productoActual.PrecioVenta,
+                Codigo = productoActual.Codigo,
+                CategoriaId = productoActual.CategoriaId,
+                Activo = productoActual.Activo
+            };
 
-            unidadDeTrabajo.ProductoDAL.Update(producto);
+            // Generar la descripción de cambios ANTES de aplicar los cambios
+            var cambios = new List<string>();
+
+            // Comparar cada propiedad con los valores del DTO
+            if (valoresOriginales.Nombre != productoDTO.Nombre)
+            {
+                cambios.Add($"Se editó el nombre de '{valoresOriginales.Nombre}' a '{productoDTO.Nombre}'");
+            }
+
+            if (valoresOriginales.Descripcion != productoDTO.Descripcion)
+            {
+                cambios.Add($"Se editó la descripción de '{valoresOriginales.Descripcion}' a '{productoDTO.Descripcion}'");
+            }
+
+            if (valoresOriginales.Stock != productoDTO.Stock)
+            {
+                cambios.Add($"Se editó el stock de {valoresOriginales.Stock} a {productoDTO.Stock}");
+            }
+
+            if (valoresOriginales.StockMinimo != productoDTO.StockMinimo)
+            {
+                cambios.Add($"Se editó el stock mínimo de {valoresOriginales.StockMinimo} a {productoDTO.StockMinimo}");
+            }
+
+            if (valoresOriginales.PrecioCompra != productoDTO.PrecioCompra)
+            {
+                cambios.Add($"Se editó el precio de compra de ₡{valoresOriginales.PrecioCompra} a ₡{productoDTO.PrecioCompra}");
+            }
+
+            if (valoresOriginales.PrecioVenta != productoDTO.PrecioVenta)
+            {
+                cambios.Add($"Se editó el precio de venta de ₡{valoresOriginales.PrecioVenta} a ₡{productoDTO.PrecioVenta}");
+            }
+
+            if (valoresOriginales.Codigo != productoDTO.Codigo)
+            {
+                cambios.Add($"Se editó el código de '{valoresOriginales.Codigo}' a '{productoDTO.Codigo}'");
+            }
+
+            if (valoresOriginales.CategoriaId != productoDTO.CategoriaId)
+            {
+                // Aquí podrías obtener los nombres de las categorías si tienes acceso al repositorio de categorías
+                cambios.Add($"Se editó la categoría de ID {valoresOriginales.CategoriaId} a ID {productoDTO.CategoriaId}");
+            }
+
+            if (valoresOriginales.Activo != productoDTO.Activo)
+            {
+                string estadoOriginal = valoresOriginales.Activo ? "Activo" : "Inactivo";
+                string estadoNuevo = productoDTO.Activo ? "Activo" : "Inactivo";
+                cambios.Add($"Se editó el estado de '{estadoOriginal}' a '{estadoNuevo}'");
+            }
+
+            // AHORA aplicar los cambios al producto
+            productoActual.Nombre = productoDTO.Nombre;
+            productoActual.Descripcion = productoDTO.Descripcion;
+            productoActual.Stock = productoDTO.Stock;
+            productoActual.StockMinimo = productoDTO.StockMinimo;
+            productoActual.PrecioCompra = productoDTO.PrecioCompra;
+            productoActual.PrecioVenta = productoDTO.PrecioVenta;
+            productoActual.Codigo = productoDTO.Codigo;
+            productoActual.CategoriaId = productoDTO.CategoriaId;
+            productoActual.Activo = productoDTO.Activo;
+            productoActual.FechaModificacion = DateTime.Now;
+
+            // Crear la descripción de cambios
+            string descripcionCambios = cambios.Count > 0
+                ? $"Descripción: {string.Join(", ", cambios)}"
+                : "Descripción: No se realizaron cambios";
+
+            // Actualizar el producto (no necesitas llamar Update explícitamente ya que el producto está siendo trackeado)
             unidadDeTrabajo.Complete();
 
+            // Crear el movimiento con la descripción de cambios
             var movimiento = new MovimientoInventarioDTO
             {
-                ProductoId = producto.ProductoId,
-                Cantidad = producto.Stock,
+                ProductoId = productoActual.ProductoId,
+                Cantidad = productoActual.Stock,
                 FechaMovimiento = DateTime.Now,
                 TipoMovimientoId = 6, // Ajuste
-                Notas = $"Descripcion: {producto.Descripcion}",
-                Referencia = producto.CategoriaId.ToString()
+                Notas = descripcionCambios,
+                Referencia = productoActual.CategoriaId.ToString()
             };
 
             _movimientoService.AddMovimiento(movimiento);
-
             unidadDeTrabajo.Complete();
+
             return productoDTO;
         }
 
