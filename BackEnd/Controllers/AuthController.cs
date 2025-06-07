@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Entities.Entities;
 
 namespace BackEnd.Controllers
 {
@@ -11,13 +12,13 @@ namespace BackEnd.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ITokenService _tokenService;
 
         public AuthController(
             ITokenService tokenService,
-            UserManager<IdentityUser> userManager,
+            UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager)
         {
             _tokenService = tokenService;
@@ -39,7 +40,8 @@ namespace BackEnd.Controllers
                 {
                     UserName = user.UserName,
                     Token = jwtToken,
-                    Roles = userRoles.ToList()
+                    Roles = userRoles.ToList(),
+                    MustChangePassword = user.MustChangePassword
                 });
             }
 
@@ -62,11 +64,12 @@ namespace BackEnd.Controllers
                 return BadRequest(new { message = "El usuario ya existe" });
             }
 
-            var user = new IdentityUser
+            var user = new ApplicationUser
             {
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = model.UserName
+                UserName = model.UserName,
+                MustChangePassword = true // Set flag
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -110,6 +113,49 @@ namespace BackEnd.Controllers
             return Ok(userDtos);
         }
 
+        [HttpPost]
+        [Route("ChangePassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (model.NewPassword != model.ConfirmPassword)
+            {
+                return BadRequest(new { message = "Las contraseñas nuevas no coinciden" });
+            }
+
+            var user = await _userManager.FindByNameAsync(model.UserName);
+            if (user == null)
+            {
+                return NotFound(new { message = "Usuario no encontrado" });
+            }
+
+            if (!await _userManager.CheckPasswordAsync(user, model.TemporaryPassword))
+            {
+                return Unauthorized(new { message = "Contraseña temporal incorrecta" });
+            }
+
+            if (!user.MustChangePassword)
+            {
+                return BadRequest(new { message = "No se requiere cambio de contraseña" });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = "Error al cambiar la contraseña", errors = result.Errors });
+            }
+
+            user.MustChangePassword = false;
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new { message = "Contraseña cambiada exitosamente" });
+        }
+
         [HttpDelete]
         [Route("users/{id}")]
         [Authorize(Roles = "Admin")]
@@ -131,7 +177,7 @@ namespace BackEnd.Controllers
         }
 
         [HttpPut]
-        [Route("users/{id}")]
+        [Route("Users/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDTO model)
         {
@@ -146,7 +192,6 @@ namespace BackEnd.Controllers
                 return NotFound(new { message = "Usuario no encontrado" });
             }
 
-            // Update username and email
             user.UserName = model.UserName;
             user.Email = model.Email;
 
@@ -156,7 +201,6 @@ namespace BackEnd.Controllers
                 return BadRequest(new { message = "Error al actualizar usuario", errors = updateResult.Errors });
             }
 
-            // Update role
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (currentRoles.Any() && currentRoles.First() != model.Role)
             {
@@ -171,7 +215,6 @@ namespace BackEnd.Controllers
                 }
             }
 
-            // Update password if provided
             if (!string.IsNullOrEmpty(model.Password))
             {
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -180,6 +223,7 @@ namespace BackEnd.Controllers
                 {
                     return BadRequest(new { message = "Error al actualizar contraseña", errors = passwordResult.Errors });
                 }
+                user.MustChangePassword = true; // Require password change after admin reset
             }
 
             return Ok(new { message = "Usuario actualizado exitosamente" });

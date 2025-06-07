@@ -16,7 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 #region Roles
 
 // Seed roles and admin user
-async Task SeedRolesAndAdmin(RoleManager<IdentityRole> roleManager, UserManager<IdentityUser> userManager)
+async Task SeedRolesAndAdmin(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager)
 {
     string[] roleNames = { "Admin", "Colaborador", "Vendedor" };
     foreach (var roleName in roleNames)
@@ -28,7 +28,7 @@ async Task SeedRolesAndAdmin(RoleManager<IdentityRole> roleManager, UserManager<
     }
 
     // Create a default admin user if none exists
-    var adminUser = new IdentityUser
+    var adminUser = new ApplicationUser
     {
         UserName = "admin",
         Email = "admin@example.com",
@@ -96,13 +96,11 @@ builder.Services.AddDbContext<AuthDBContext>(
 #endregion
 
 #region Identity
-builder.Services.AddIdentityCore<IdentityUser>()
-                        .AddRoles<IdentityRole>()
-                        .AddTokenProvider<DataProtectorTokenProvider<IdentityUser>>("UNA")
-                        .AddEntityFrameworkStores<AuthDBContext>()
-                        .AddDefaultTokenProviders();
-
-
+builder.Services.AddIdentityCore<ApplicationUser>()
+    .AddRoles<IdentityRole>()
+    .AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>("UNA") // Cambia IdentityUser a ApplicationUser
+    .AddEntityFrameworkStores<AuthDBContext>()
+    .AddDefaultTokenProviders();
 
 builder.Services.Configure<IdentityOptions>(options =>
 {
@@ -110,12 +108,7 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Password.RequiredLength = 3;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
-
 });
-
-
-
-
 #endregion
 
 
@@ -195,7 +188,7 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     await SeedRolesAndAdmin(roleManager, userManager);
 }
 
