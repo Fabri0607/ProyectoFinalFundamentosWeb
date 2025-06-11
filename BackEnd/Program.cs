@@ -1,4 +1,5 @@
 using System.Text;
+using BackEnd.Helpers;
 using BackEnd.Services.Implementations;
 using BackEnd.Services.Interfaces;
 using DAL.Implementations;
@@ -170,6 +171,8 @@ builder.Services.AddScoped<IMovimientoInventarioService, MovimientoInventarioSer
 builder.Services.AddScoped<IReporteService, ReporteService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddScoped<CorreoHelper>();
 
 builder.Services.AddScoped<RoleManager<IdentityRole>>();
 

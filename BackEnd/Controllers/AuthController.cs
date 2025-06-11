@@ -5,6 +5,7 @@ using BackEnd.DTO;
 using BackEnd.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Entities.Entities;
+using BackEnd.Helpers;
 
 namespace BackEnd.Controllers
 {
@@ -15,15 +16,18 @@ namespace BackEnd.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ITokenService _tokenService;
+        private readonly CorreoHelper _correoHelper;
 
         public AuthController(
             ITokenService tokenService,
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager)
+            RoleManager<IdentityRole> roleManager,
+            CorreoHelper correoHelper)
         {
             _tokenService = tokenService;
             _userManager = userManager;
             _roleManager = roleManager;
+            _correoHelper = correoHelper;
         }
 
         [HttpPost]
@@ -87,9 +91,22 @@ namespace BackEnd.Controllers
                 return BadRequest(new { message = "Rol inválido o no especificado" });
             }
 
+            // Send temporary password via email
+            try
+            {
+                _correoHelper.EnviarCodigoPorCorreo(model.Email, model.Password); // Use provided password as temporary code
+            }
+            catch (Exception ex)
+            {
+                // Log the error (use a proper logging framework in production)
+                Console.WriteLine($"Error al enviar correo: {ex.Message}");
+                // Optionally, you can return a warning but still confirm user creation
+                return Ok(new { message = "Usuario creado exitosamente, pero hubo un problema al enviar el correo" });
+            }
+
             return Ok(new { message = "Usuario creado exitosamente" });
         }
-
+   
         [HttpGet]
         [Route("users")]
         [Authorize(Roles = "Admin")]
