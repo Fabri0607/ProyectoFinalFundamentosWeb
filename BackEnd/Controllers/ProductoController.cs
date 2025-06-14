@@ -37,12 +37,32 @@ namespace BackEnd.Controllers
             var result = _productoService.Get(id);
             return result;
         }
-        
+
         // POST api/<ProductoController>
         [HttpPost]
-        public void Post([FromBody] ProductoDTO producto)
+        public IActionResult Create([FromBody] ProductoDTO producto)
         {
-            _productoService.Add(producto);
+            try
+            {
+                if (producto == null)
+                {
+                    return BadRequest("Los datos del producto son nulos.");
+                }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                _productoService.Add(producto);
+                return  NoContent();
+            }
+            catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601) // Violación de clave única
+            {
+                return Conflict(new { mensaje = $"Ya existe un producto con el código {producto.Codigo}." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Ocurrió un error al agregar el producto." });
+            }
         }
 
         // PUT api/<ProductoController>
