@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>README - Sistema Inventario Ventas</title>
 </head>
 <body>
 
